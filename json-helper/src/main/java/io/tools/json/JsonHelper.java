@@ -89,16 +89,23 @@ public class JsonHelper {
         }
         for (JsonNode element : patchArray) {
             if (element != null && !element.isNull()) {
-                if (element.isObject()) {
-                    mergeObjectField(fieldName, element, originalArray.addObject());
-                } else if (element.isArray()) {
-                    mergeArrayField(fieldName, (ArrayNode) element, originalArray.addObject());
-                } else {
+                if (!containsNode(originalArray, element)) {
                     originalArray.add(element);
                 }
             }
         }
     }
+
+    private static boolean containsNode(ArrayNode array, JsonNode node) {
+        for (JsonNode element : array) {
+            if (element.equals(node)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+
 
     /**
      * Merges a nested object field while preserving existing structure.

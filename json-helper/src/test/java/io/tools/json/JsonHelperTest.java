@@ -60,14 +60,27 @@ class JsonHelperTest {
 
     @Test
     void testMergeArrayFields() {
-        User target = new User("Alice", 28, List.of("admin"),
-            Map.of("team", "engineering"));
+        User target = new User("Alice", 28, List.of("admin", "role"), Map.of());
         User source = new User(null, 0, List.of("developer"), Map.of());
 
         User mergedUser = JsonHelper.patch(target, source, User.class);
 
         System.out.println(mergedUser.roles);
         assertTrue(mergedUser.roles.contains("admin"));
+        assertTrue(mergedUser.roles.contains("role"));
+        assertTrue(mergedUser.roles.contains("developer"));
+        assertEquals(3, mergedUser.roles.size());
+    }
+
+    @Test
+    void testMergeDuplicateArrayFields() {
+        User target = new User("Alice", 28, List.of("role", "developer"), Map.of());
+        User source = new User(null, 0, List.of("role"), Map.of());
+
+        User mergedUser = JsonHelper.patch(target, source, User.class);
+
+        System.out.println(mergedUser.roles);
+        assertTrue(mergedUser.roles.contains("role"));
         assertTrue(mergedUser.roles.contains("developer"));
         assertEquals(2, mergedUser.roles.size());
     }
