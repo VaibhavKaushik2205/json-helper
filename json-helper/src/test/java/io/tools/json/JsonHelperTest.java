@@ -2,6 +2,8 @@ package io.tools.json;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import io.tools.json.enums.ArrayMergeStrategy;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
@@ -26,6 +28,12 @@ class JsonHelperTest {
             this.roles = roles;
             this.metadata = metadata;
         }
+    }
+
+    MergeOptions options;
+    @BeforeEach
+    public void setup() {
+        options = new MergeOptions();
     }
 
     @Test
@@ -60,29 +68,57 @@ class JsonHelperTest {
 
     @Test
     void testMergeArrayFields() {
-        User target = new User("Alice", 28, List.of("admin", "role"), Map.of());
+        User target = new User("Alice", 28, List.of("admin", "architect"), Map.of());
         User source = new User(null, 0, List.of("developer"), Map.of());
 
         User mergedUser = JsonHelper.patch(target, source, User.class);
 
         System.out.println(mergedUser.roles);
         assertTrue(mergedUser.roles.contains("admin"));
-        assertTrue(mergedUser.roles.contains("role"));
+        assertTrue(mergedUser.roles.contains("architect"));
         assertTrue(mergedUser.roles.contains("developer"));
         assertEquals(3, mergedUser.roles.size());
     }
 
     @Test
-    void testMergeDuplicateArrayFields() {
-        User target = new User("Alice", 28, List.of("role", "developer"), Map.of());
-        User source = new User(null, 0, List.of("role"), Map.of());
+    void testMergeUniqueArrayFields() {
+        User target = new User("Alice", 28, List.of("admin", "developer"), Map.of());
+        User source = new User(null, 0, List.of("admin"), Map.of());
 
-        User mergedUser = JsonHelper.patch(target, source, User.class);
+        options.setArrayMergeStrategy(ArrayMergeStrategy.UNIQUE);
+        User mergedUser = JsonHelper.patch(target, source, User.class, options);
 
-        System.out.println(mergedUser.roles);
-        assertTrue(mergedUser.roles.contains("role"));
+        assertTrue(mergedUser.roles.contains("admin"));
         assertTrue(mergedUser.roles.contains("developer"));
         assertEquals(2, mergedUser.roles.size());
+    }
+
+    @Test
+    void testMergeAppendArrayFields() {
+        User target = new User("Alice", 28, List.of("admin", "developer"), Map.of());
+        User source = new User(null, 0, List.of("admin"), Map.of());
+
+        options.setArrayMergeStrategy(ArrayMergeStrategy.APPEND);
+        User mergedUser = JsonHelper.patch(target, source, User.class, options);
+
+        long adminCount = mergedUser.roles.stream().filter(role -> role.equals("admin")).count();
+        assertEquals(2, adminCount);
+        assertTrue(mergedUser.roles.contains("developer"));
+        assertEquals(3, mergedUser.roles.size());
+    }
+
+    @Test
+    void testMergeOverwriteArrayFields() {
+        User target = new User("Alice", 28, List.of("admin", "developer"), Map.of());
+        User source = new User(null, 0, List.of("architect"), Map.of());
+
+        options.setArrayMergeStrategy(ArrayMergeStrategy.OVERWRITE);
+        User mergedUser = JsonHelper.patch(target, source, User.class, options);
+
+        assertTrue(mergedUser.roles.contains("architect"));
+        assertFalse(mergedUser.roles.contains("admin"));
+        assertFalse(mergedUser.roles.contains("developer"));
+        assertEquals(1, mergedUser.roles.size());
     }
 }
 
