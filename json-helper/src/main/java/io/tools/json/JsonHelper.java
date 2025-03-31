@@ -59,76 +59,98 @@ public class JsonHelper {
      * Merges non-null values from patch JSON node into original JSON node.
      */
     private static JsonNode mergeJsonNode(JsonNode patch, JsonNode original, MergeOptions options) {
-        if (patch == null || original == null || !patch.isObject() || !original.isObject()) {
-            throw new IllegalArgumentException("Patch and original must be non-null JSON objects.");
-        }
+        ObjectNode targetNode = (ObjectNode) original;
         patch.fields().forEachRemaining(entry -> {
-            if (!entry.getValue().isNull()) {
-                if (!entry.getValue().isObject() && !entry.getValue().isArray()) {
-                    ((ObjectNode) original).set(entry.getKey(), entry.getValue());
-                } else {
-                    mergeJsonNodeField(entry.getKey(), entry.getValue(), original, options);
-                }
+            String fieldName = entry.getKey();
+            JsonNode patchValue = entry.getValue();
+            JsonNode originalValue = targetNode.get(fieldName);
+
+            // If patch value is null, skip it
+            if (patchValue.isNull()) {
+                return;
+            }
+
+            // Handling based on field type
+            if (patchValue.isObject()) {
+                mergeObjectField(fieldName, patchValue, originalValue, targetNode, options);
+            } else if (patchValue.isArray()) {
+                mergeArrayField(fieldName, (ArrayNode) patchValue, targetNode, options);
+            } else {
+                // Overwrite primitive value
+                targetNode.set(fieldName, patchValue);
             }
         });
-        return original;
+        return targetNode;
     }
 
     /**
-     * Determines whether the field should be merged as an array or an object.
+     * Handles merging of nested object fields.
      */
-    private static void mergeJsonNodeField(String fieldName, JsonNode patchNode, JsonNode originalNode, MergeOptions options) {
-        if (patchNode.isArray()) {
-            mergeArrayField(fieldName, (ArrayNode) patchNode, (ObjectNode) originalNode, options);
-        } else if (patchNode.isObject()) {
-            mergeObjectField(fieldName, patchNode, originalNode, options);
+    private static void mergeObjectField(String fieldName, JsonNode patchNode, JsonNode originalValue, ObjectNode targetNode, MergeOptions options) {
+        // Overwrite if no existing object
+        if (originalValue == null || !originalValue.isObject()) {
+            targetNode.set(fieldName, patchNode);
+        } else {
+            // Deep merge
+            JsonNode mergedNode = mergeJsonNode(patchNode, originalValue, options);
+            targetNode.set(fieldName, mergedNode);
         }
     }
 
     /**
-     * Merges an array field by adding new elements instead of replacing the entire array.
+     * Handles merging of array fields based on strategy.
      */
-    private static void mergeArrayField(String fieldName, ArrayNode patchArray, ObjectNode originalNode, MergeOptions options) {
-        if (options.arrayMergeStrategy == ArrayMergeStrategy.OVERWRITE) {
-            // Replace the entire array
-            originalNode.set(fieldName, patchArray);
+    private static void mergeArrayField(String fieldName, ArrayNode patchArray, ObjectNode targetNode, MergeOptions options) {
+        JsonNode existingArray = targetNode.get(fieldName);
+
+        // If there's no existing array or the strategy is OVERWRITE, replace it entirely
+        if (existingArray == null || !existingArray.isArray()) {
+            // If the existing array is null or not an array, overwrite it with the patch array
+            targetNode.set(fieldName, patchArray);
             return;
         }
 
-        ArrayNode originalArray = (ArrayNode) originalNode.get(fieldName);
-        if (originalArray == null || !originalArray.isArray()) {
-            originalArray = originalNode.putArray(fieldName);
+        // return if patch array is empty
+        if (patchArray.isEmpty()) {
+            return;
         }
+        ArrayNode originalArray = (ArrayNode) existingArray;
 
-        for (JsonNode element : patchArray) {
-            if (element != null && !element.isNull()) {
-                if (options.arrayMergeStrategy == ArrayMergeStrategy.UNIQUE && !containsNode(originalArray, element)) {
-                    originalArray.add(element);
-                } else if (options.arrayMergeStrategy == ArrayMergeStrategy.APPEND) {
+        if (ArrayMergeStrategy.OVERWRITE.equals(options.getMergeStrategy())) {
+            // Replace the entire array with the patch array
+            targetNode.set(fieldName, patchArray);
+            return;
+        }
+        else if (options.getMergeStrategy() == ArrayMergeStrategy.APPEND_ARRAY) {
+            // Append new elements to the array
+            for (JsonNode element : patchArray) {
+                originalArray.add(element);
+            }
+        }
+        else if (options.getMergeStrategy() == ArrayMergeStrategy.APPEND_UNIQUE) {
+            // Handle append unique array strategy
+            for (JsonNode element : patchArray) {
+                // Only add if element is not already present
+                if (!arrayContains(originalArray, element)) {
                     originalArray.add(element);
                 }
             }
         }
+        // Save the merged array back into the target node
+        targetNode.set(fieldName, originalArray);
     }
 
-    private static boolean containsNode(ArrayNode array, JsonNode node) {
-        for (JsonNode element : array) {
-            if (element.equals(node)) {
+
+    /**
+     * Checks if an array already contains a given element.
+     */
+    private static boolean arrayContains(ArrayNode array, JsonNode element) {
+        for (JsonNode node : array) {
+            if (node.equals(element)) {
                 return true;
             }
         }
         return false;
     }
 
-    /**
-     * Merges a nested object field while preserving existing structure.
-     */
-    private static void mergeObjectField(String fieldName, JsonNode patchNode, JsonNode originalNode, MergeOptions options) {
-        JsonNode originalField = originalNode.get(fieldName);
-        if (originalField == null || !originalField.isObject()) {
-            originalField = objectMapper.createObjectNode();
-        }
-        mergeJsonNode(patchNode, originalField, options);
-        ((ObjectNode) originalNode).set(fieldName, originalField);
-    }
 }

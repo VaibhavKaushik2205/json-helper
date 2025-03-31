@@ -1,25 +1,28 @@
 package io.tools.json;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import io.tools.json.enums.ArrayMergeStrategy;
-
-import java.util.function.BiPredicate;
 
 
 public class MergeOptions {
 
-    ArrayMergeStrategy arrayMergeStrategy = ArrayMergeStrategy.UNIQUE;
-    BiPredicate<ArrayNode, JsonNode> customMergeStrategy = null;
+    private ArrayMergeStrategy arrayMergeStrategy;  // Strategy for merging the arrays
 
-    public MergeOptions setArrayMergeStrategy(ArrayMergeStrategy strategy) {
-        this.arrayMergeStrategy = strategy;
-        return this;
+    // Constructor
+    public MergeOptions() {
+        this.arrayMergeStrategy = ArrayMergeStrategy.APPEND_ARRAY;
     }
 
+    public MergeOptions(ArrayMergeStrategy arrayMergeStrategy) {
+        this.arrayMergeStrategy = arrayMergeStrategy;
+    }
 
-    public MergeOptions setCustomMergeStrategy(BiPredicate<ArrayNode, JsonNode> strategy) {
-        this.customMergeStrategy = strategy;
-        return this;
+    // Getter
+    public ArrayMergeStrategy getMergeStrategy() {
+        return arrayMergeStrategy;
+    }
+
+    // Setter
+    public void setMergeStrategy(ArrayMergeStrategy arrayMergeStrategy) {
+        this.arrayMergeStrategy = arrayMergeStrategy;
     }
 }

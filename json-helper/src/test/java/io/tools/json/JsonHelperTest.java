@@ -16,11 +16,11 @@ class JsonHelperTest {
     static class User {
         public String name;
         public int age;
+        public Address address;
         public List<String> roles;
         public Map<String, String> metadata;
 
-        public User() {
-        }
+        public User() {}
 
         public User(String name, int age, List<String> roles, Map<String, String> metadata) {
             this.name = name;
@@ -28,9 +28,27 @@ class JsonHelperTest {
             this.roles = roles;
             this.metadata = metadata;
         }
+
+        public void setAddress(Address address) {
+            this.address = address;
+        }
     }
 
+    static class Address {
+        public String city;
+        public String zip;
+
+        public Address() {}
+
+        public Address(String city, String zip) {
+            this.city = city;
+            this.zip = zip;
+        }
+    }
+
+
     MergeOptions options;
+
     @BeforeEach
     public void setup() {
         options = new MergeOptions();
@@ -67,7 +85,7 @@ class JsonHelperTest {
     }
 
     @Test
-    void testMergeArrayFields() {
+    void testMergeAppendArrayFields() {
         User target = new User("Alice", 28, List.of("admin", "architect"), Map.of());
         User source = new User(null, 0, List.of("developer"), Map.of());
 
@@ -85,26 +103,13 @@ class JsonHelperTest {
         User target = new User("Alice", 28, List.of("admin", "developer"), Map.of());
         User source = new User(null, 0, List.of("admin"), Map.of());
 
-        options.setArrayMergeStrategy(ArrayMergeStrategy.UNIQUE);
-        User mergedUser = JsonHelper.patch(target, source, User.class, options);
-
-        assertTrue(mergedUser.roles.contains("admin"));
-        assertTrue(mergedUser.roles.contains("developer"));
-        assertEquals(2, mergedUser.roles.size());
-    }
-
-    @Test
-    void testMergeAppendArrayFields() {
-        User target = new User("Alice", 28, List.of("admin", "developer"), Map.of());
-        User source = new User(null, 0, List.of("admin"), Map.of());
-
-        options.setArrayMergeStrategy(ArrayMergeStrategy.APPEND);
+        options.setMergeStrategy(ArrayMergeStrategy.APPEND_UNIQUE);
         User mergedUser = JsonHelper.patch(target, source, User.class, options);
 
         long adminCount = mergedUser.roles.stream().filter(role -> role.equals("admin")).count();
-        assertEquals(2, adminCount);
+        assertEquals(1, adminCount);
         assertTrue(mergedUser.roles.contains("developer"));
-        assertEquals(3, mergedUser.roles.size());
+        assertEquals(2, mergedUser.roles.size());
     }
 
     @Test
@@ -112,7 +117,7 @@ class JsonHelperTest {
         User target = new User("Alice", 28, List.of("admin", "developer"), Map.of());
         User source = new User(null, 0, List.of("architect"), Map.of());
 
-        options.setArrayMergeStrategy(ArrayMergeStrategy.OVERWRITE);
+        options.setMergeStrategy(ArrayMergeStrategy.OVERWRITE);
         User mergedUser = JsonHelper.patch(target, source, User.class, options);
 
         assertTrue(mergedUser.roles.contains("architect"));
@@ -120,5 +125,25 @@ class JsonHelperTest {
         assertFalse(mergedUser.roles.contains("developer"));
         assertEquals(1, mergedUser.roles.size());
     }
+
+    @Test
+    void testNestedObject() {
+
+        User target = new User("Alice", 28 , List.of("admin"), Map.of("team", "engineering"));
+        User patch = new User(null, 0, null, null);
+
+        Address targetAddress = new Address("NY", "10001");
+        Address patchAddress = new Address(null, "20002");
+
+        target.setAddress(targetAddress);
+        patch.setAddress(patchAddress);
+        User mergedUser = JsonHelper.patch(target, patch, User.class, options);
+
+        System.out.println(mergedUser.address.city);
+        System.out.println(mergedUser.address.zip);
+        assertEquals("NY", mergedUser.address.city); // City should remain unchanged
+        assertEquals("20002", mergedUser.address.zip); // Zip should be updated
+    }
+
 }
 
