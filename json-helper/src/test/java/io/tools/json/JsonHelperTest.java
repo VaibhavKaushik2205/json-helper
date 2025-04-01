@@ -3,6 +3,7 @@ package io.tools.json;
 import static org.junit.jupiter.api.Assertions.*;
 
 import io.tools.json.enums.ArrayMergeStrategy;
+import io.tools.json.enums.ObjectMergeStrategy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -58,7 +59,8 @@ class JsonHelperTest {
         User original = new User("Alice", 28, Collections.emptyList(), originalMetadata);
         User patch = new User(null, 39, Collections.emptyList(), patchMetadata);
 
-        User mergedUser = JsonHelper.patch(original, patch, User.class);
+        options.setObjectMergeStrategy(ObjectMergeStrategy.DEEP_MERGE);
+        User mergedUser = JsonHelper.patch(original, patch, User.class, options);
 
         assertEquals("Alice", mergedUser.name);
         assertEquals(39, mergedUser.age);

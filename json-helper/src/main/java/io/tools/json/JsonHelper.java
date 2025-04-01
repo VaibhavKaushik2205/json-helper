@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.tools.json.enums.ArrayMergeStrategy;
+import io.tools.json.enums.ObjectMergeStrategy;
 
 /**
  * Utility class for merging non-null values recursively from a source object into a target object.
@@ -63,8 +64,13 @@ public class JsonHelper {
             throw new IllegalArgumentException("Patch and original must be non-null JSON objects.");
         }
         patch.fields().forEachRemaining(entry -> {
+            // Proceed if current field is not-null
             if (!entry.getValue().isNull()) {
                 if (!entry.getValue().isObject() && !entry.getValue().isArray()) {
+                    // return if the string is empty
+                    if (entry.getValue().asText().isBlank()) {
+                        return;
+                    }
                     ((ObjectNode) original).set(entry.getKey(), entry.getValue());
                 } else {
                     mergeJsonNodeField(entry.getKey(), entry.getValue(), original, options);
@@ -128,7 +134,9 @@ public class JsonHelper {
         if (originalField == null || !originalField.isObject()) {
             originalField = objectMapper.createObjectNode();
         }
-        mergeJsonNode(patchNode, originalField, options);
+        if (options.objectMergeStrategy == ObjectMergeStrategy.DEEP_MERGE) {
+            mergeJsonNode(patchNode, originalField, options);
+        }
         ((ObjectNode) originalNode).set(fieldName, originalField);
     }
 }
