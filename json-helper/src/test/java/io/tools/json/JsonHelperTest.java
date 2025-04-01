@@ -2,7 +2,7 @@ package io.tools.json;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import io.tools.json.enums.ArrayMergeStrategy;
+import io.tools.json.enums.MergeStrategy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -30,10 +30,10 @@ class JsonHelperTest {
         }
     }
 
-    MergeOptions options;
+    JsonHelper jsonHelper;
     @BeforeEach
     public void setup() {
-        options = new MergeOptions();
+        jsonHelper = new JsonHelper();
     }
 
     @Test
@@ -41,7 +41,7 @@ class JsonHelperTest {
         User original = new User("John", 25, Collections.emptyList(), new HashMap<>());
         User patch = new User(null, 30, Collections.emptyList(), null);
 
-        User mergedUser = JsonHelper.patch(original, patch, User.class);
+        User mergedUser = jsonHelper.patch(original, patch, User.class);
 
         assertEquals("John", mergedUser.name); // Should retain existing value
         assertEquals(30, mergedUser.age); // Should update
@@ -58,7 +58,8 @@ class JsonHelperTest {
         User original = new User("Alice", 28, Collections.emptyList(), originalMetadata);
         User patch = new User(null, 39, Collections.emptyList(), patchMetadata);
 
-        User mergedUser = JsonHelper.patch(original, patch, User.class);
+        jsonHelper = new JsonHelper().setObjectMergeStrategy(MergeStrategy.DEEP_MERGE);
+        User mergedUser = jsonHelper.patch(original, patch, User.class);
 
         assertEquals("Alice", mergedUser.name);
         assertEquals(39, mergedUser.age);
@@ -71,7 +72,7 @@ class JsonHelperTest {
         User target = new User("Alice", 28, List.of("admin", "architect"), Map.of());
         User source = new User(null, 0, List.of("developer"), Map.of());
 
-        User mergedUser = JsonHelper.patch(target, source, User.class);
+        User mergedUser = jsonHelper.patch(target, source, User.class);
 
         System.out.println(mergedUser.roles);
         assertTrue(mergedUser.roles.contains("admin"));
@@ -85,8 +86,8 @@ class JsonHelperTest {
         User target = new User("Alice", 28, List.of("admin", "developer"), Map.of());
         User source = new User(null, 0, List.of("admin"), Map.of());
 
-        options.setArrayMergeStrategy(ArrayMergeStrategy.UNIQUE);
-        User mergedUser = JsonHelper.patch(target, source, User.class, options);
+        jsonHelper = new JsonHelper().setArrayMergeStrategy(MergeStrategy.UNIQUE);
+        User mergedUser = jsonHelper.patch(target, source, User.class);
 
         assertTrue(mergedUser.roles.contains("admin"));
         assertTrue(mergedUser.roles.contains("developer"));
@@ -98,8 +99,7 @@ class JsonHelperTest {
         User target = new User("Alice", 28, List.of("admin", "developer"), Map.of());
         User source = new User(null, 0, List.of("admin"), Map.of());
 
-        options.setArrayMergeStrategy(ArrayMergeStrategy.APPEND);
-        User mergedUser = JsonHelper.patch(target, source, User.class, options);
+        User mergedUser = jsonHelper.patch(target, source, User.class);
 
         long adminCount = mergedUser.roles.stream().filter(role -> role.equals("admin")).count();
         assertEquals(2, adminCount);
@@ -112,8 +112,8 @@ class JsonHelperTest {
         User target = new User("Alice", 28, List.of("admin", "developer"), Map.of());
         User source = new User(null, 0, List.of("architect"), Map.of());
 
-        options.setArrayMergeStrategy(ArrayMergeStrategy.OVERWRITE);
-        User mergedUser = JsonHelper.patch(target, source, User.class, options);
+        jsonHelper = new JsonHelper().setArrayMergeStrategy(MergeStrategy.OVERWRITE);
+        User mergedUser = jsonHelper.patch(target, source, User.class);
 
         assertTrue(mergedUser.roles.contains("architect"));
         assertFalse(mergedUser.roles.contains("admin"));

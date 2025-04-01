@@ -7,7 +7,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import io.tools.json.enums.ArrayMergeStrategy;
+import io.tools.json.enums.MergeStrategy;
+
+import java.util.function.BiPredicate;
 
 /**
  * Utility class for merging non-null values recursively from a source object into a target object.
@@ -28,6 +30,33 @@ public class JsonHelper {
         .setSerializationInclusion(JsonInclude.Include.NON_NULL)
         .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
 
+
+    // MergeOptions to control the merge behavior
+    private MergeOptions mergeOptions;
+
+    public JsonHelper() {
+        // Default MergeOptions
+        this.mergeOptions = new MergeOptions();
+    }
+
+    // Fluent setter for ArrayMergeStrategy
+    public JsonHelper setArrayMergeStrategy(MergeStrategy mergeStrategy) {
+        this.mergeOptions.setArrayMergeStrategy(mergeStrategy);
+        return this;
+    }
+
+    // Fluent setter for ObjectMergeStrategy
+    public JsonHelper setObjectMergeStrategy(MergeStrategy mergeStrategy) {
+        this.mergeOptions.setObjectMergeStrategy(mergeStrategy);
+        return this;
+    }
+
+    // Fluent setter for custom merge strategy (if needed)
+    public JsonHelper setCustomMergeStrategy(BiPredicate<ArrayNode, JsonNode> customMergeStrategy) {
+        this.mergeOptions.setCustomMergeStrategy(customMergeStrategy);
+        return this;
+    }
+
     /**
      * Merges a patch object into a target object, preserving existing values if patch fields are null.
      *
@@ -36,12 +65,12 @@ public class JsonHelper {
      * @param type  The class type of the target object.
      * @return The merged object.
      */
-    public static <T> T patch(T target, T patch, Class<T> type) {
-        return patch(target, patch, type, new MergeOptions());
+    public <T> T patch(T target, T patch, Class<T> type) {
+        return patch(target, patch, type, mergeOptions);
     }
 
 
-    public static <T> T patch(T target, T patch, Class<T> type, MergeOptions options) {
+    private  <T> T patch(T target, T patch, Class<T> type, MergeOptions options) {
         if (target == null || patch == null) {
             throw new IllegalArgumentException("Original object and patch must be non-null");
         }
@@ -58,13 +87,18 @@ public class JsonHelper {
     /**
      * Merges non-null values from patch JSON node into original JSON node.
      */
-    private static JsonNode mergeJsonNode(JsonNode patch, JsonNode original, MergeOptions options) {
+    private JsonNode mergeJsonNode(JsonNode patch, JsonNode original, MergeOptions options) {
         if (patch == null || original == null || !patch.isObject() || !original.isObject()) {
             throw new IllegalArgumentException("Patch and original must be non-null JSON objects.");
         }
         patch.fields().forEachRemaining(entry -> {
+            // Proceed if current field is not-null
             if (!entry.getValue().isNull()) {
                 if (!entry.getValue().isObject() && !entry.getValue().isArray()) {
+                    // return if the string is empty
+                    if (entry.getValue().asText().isBlank()) {
+                        return;
+                    }
                     ((ObjectNode) original).set(entry.getKey(), entry.getValue());
                 } else {
                     mergeJsonNodeField(entry.getKey(), entry.getValue(), original, options);
@@ -77,7 +111,7 @@ public class JsonHelper {
     /**
      * Determines whether the field should be merged as an array or an object.
      */
-    private static void mergeJsonNodeField(String fieldName, JsonNode patchNode, JsonNode originalNode, MergeOptions options) {
+    private void mergeJsonNodeField(String fieldName, JsonNode patchNode, JsonNode originalNode, MergeOptions options) {
         if (patchNode.isArray()) {
             mergeArrayField(fieldName, (ArrayNode) patchNode, (ObjectNode) originalNode, options);
         } else if (patchNode.isObject()) {
@@ -88,8 +122,8 @@ public class JsonHelper {
     /**
      * Merges an array field by adding new elements instead of replacing the entire array.
      */
-    private static void mergeArrayField(String fieldName, ArrayNode patchArray, ObjectNode originalNode, MergeOptions options) {
-        if (options.arrayMergeStrategy == ArrayMergeStrategy.OVERWRITE) {
+    private void mergeArrayField(String fieldName, ArrayNode patchArray, ObjectNode originalNode, MergeOptions options) {
+        if (options.arrayMergeStrategy == MergeStrategy.OVERWRITE) {
             // Replace the entire array
             originalNode.set(fieldName, patchArray);
             return;
@@ -102,16 +136,18 @@ public class JsonHelper {
 
         for (JsonNode element : patchArray) {
             if (element != null && !element.isNull()) {
-                if (options.arrayMergeStrategy == ArrayMergeStrategy.UNIQUE && !containsNode(originalArray, element)) {
+                if (options.arrayMergeStrategy == MergeStrategy.UNIQUE && !containsNode(originalArray, element)) {
                     originalArray.add(element);
-                } else if (options.arrayMergeStrategy == ArrayMergeStrategy.APPEND) {
+                } else if (options.arrayMergeStrategy == MergeStrategy.APPEND) {
                     originalArray.add(element);
+                } else if (options.arrayMergeStrategy == MergeStrategy.DEEP_MERGE) {
+                    throw new IllegalArgumentException("List elements do support Deep Merge");
                 }
             }
         }
     }
 
-    private static boolean containsNode(ArrayNode array, JsonNode node) {
+    private boolean containsNode(ArrayNode array, JsonNode node) {
         for (JsonNode element : array) {
             if (element.equals(node)) {
                 return true;
@@ -123,12 +159,14 @@ public class JsonHelper {
     /**
      * Merges a nested object field while preserving existing structure.
      */
-    private static void mergeObjectField(String fieldName, JsonNode patchNode, JsonNode originalNode, MergeOptions options) {
+    private void mergeObjectField(String fieldName, JsonNode patchNode, JsonNode originalNode, MergeOptions options) {
         JsonNode originalField = originalNode.get(fieldName);
         if (originalField == null || !originalField.isObject()) {
             originalField = objectMapper.createObjectNode();
         }
-        mergeJsonNode(patchNode, originalField, options);
+        if (options.objectMergeStrategy == MergeStrategy.DEEP_MERGE) {
+            mergeJsonNode(patchNode, originalField, options);
+        }
         ((ObjectNode) originalNode).set(fieldName, originalField);
     }
 }
