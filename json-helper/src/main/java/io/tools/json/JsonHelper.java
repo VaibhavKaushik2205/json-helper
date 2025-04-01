@@ -51,6 +51,12 @@ public class JsonHelper {
         return this;
     }
 
+    // Fluent setter for ObjectMergeStrategy
+    public JsonHelper setIgnoreEmptyStrings(boolean ignoreEmptyStrings) {
+        this.mergeOptions.setIgnoreEmptyStrings(ignoreEmptyStrings);
+        return this;
+    }
+
     // Fluent setter for custom merge strategy (if needed)
     public JsonHelper setCustomMergeStrategy(BiPredicate<ArrayNode, JsonNode> customMergeStrategy) {
         this.mergeOptions.setCustomMergeStrategy(customMergeStrategy);
@@ -96,7 +102,7 @@ public class JsonHelper {
             if (!entry.getValue().isNull()) {
                 if (!entry.getValue().isObject() && !entry.getValue().isArray()) {
                     // return if the string is empty
-                    if (entry.getValue().asText().isBlank()) {
+                    if (entry.getValue().asText().isBlank() && options.getIgnoreEmptyStrings()) {
                         return;
                     }
                     ((ObjectNode) original).set(entry.getKey(), entry.getValue());
@@ -123,7 +129,7 @@ public class JsonHelper {
      * Merges an array field by adding new elements instead of replacing the entire array.
      */
     private void mergeArrayField(String fieldName, ArrayNode patchArray, ObjectNode originalNode, MergeOptions options) {
-        if (options.arrayMergeStrategy == MergeStrategy.OVERWRITE) {
+        if (options.getArrayMergeStrategy() == MergeStrategy.OVERWRITE) {
             // Replace the entire array
             originalNode.set(fieldName, patchArray);
             return;
@@ -136,12 +142,12 @@ public class JsonHelper {
 
         for (JsonNode element : patchArray) {
             if (element != null && !element.isNull()) {
-                if (options.arrayMergeStrategy == MergeStrategy.UNIQUE && !containsNode(originalArray, element)) {
+                if (options.getArrayMergeStrategy() == MergeStrategy.UNIQUE && !containsNode(originalArray, element)) {
                     originalArray.add(element);
-                } else if (options.arrayMergeStrategy == MergeStrategy.APPEND) {
+                } else if (options.getArrayMergeStrategy() == MergeStrategy.APPEND) {
                     originalArray.add(element);
-                } else if (options.arrayMergeStrategy == MergeStrategy.DEEP_MERGE) {
-                    throw new IllegalArgumentException("List elements do support Deep Merge");
+                } else if (options.getArrayMergeStrategy() == MergeStrategy.DEEP_MERGE) {
+                    throw new IllegalArgumentException("List elements do not support Deep Merge");
                 }
             }
         }
@@ -164,9 +170,11 @@ public class JsonHelper {
         if (originalField == null || !originalField.isObject()) {
             originalField = objectMapper.createObjectNode();
         }
-        if (options.objectMergeStrategy == MergeStrategy.DEEP_MERGE) {
-            mergeJsonNode(patchNode, originalField, options);
+        if (options.getObjectMergeStrategy() == MergeStrategy.OVERWRITE) {
+            ((ObjectNode) originalNode).set(fieldName, patchNode);
+            return;
         }
+        mergeJsonNode(patchNode, originalField, options);
         ((ObjectNode) originalNode).set(fieldName, originalField);
     }
 }

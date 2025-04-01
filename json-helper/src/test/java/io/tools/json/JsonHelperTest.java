@@ -120,5 +120,38 @@ class JsonHelperTest {
         assertFalse(mergedUser.roles.contains("developer"));
         assertEquals(1, mergedUser.roles.size());
     }
+
+    @Test
+    void testAllowEmptyString() {
+        User original = new User("Alice", 28, List.of("admin", "developer"), Map.of("role", "admin"));
+        User patch = new User("", 30, List.of("developer"), Map.of("role", ""));
+
+        jsonHelper = new JsonHelper()
+            .setArrayMergeStrategy(MergeStrategy.OVERWRITE)
+            .setObjectMergeStrategy(MergeStrategy.DEEP_MERGE)
+            .setIgnoreEmptyStrings(false);
+        User mergedUser = jsonHelper.patch(original, patch, User.class);
+
+        assertEquals("", mergedUser.name);
+        assertEquals(30, mergedUser.age);
+        assertTrue(mergedUser.roles.contains("developer"));
+        assertEquals(1, mergedUser.roles.size());
+
+        // For the metadata, the empty string should overwrite the original value
+        assertEquals("", mergedUser.metadata.get("role"));
+    }
+
+    @Test
+    void testDeepMergeArrayStrategyThrowsException() {
+        User original = new User("Alice", 28, List.of("admin", "developer"), Map.of("role", "admin"));
+        User patch = new User(null, 30, List.of("manager", "developer"), Map.of("role", "admin"));
+
+        jsonHelper = new JsonHelper().setArrayMergeStrategy(MergeStrategy.DEEP_MERGE);
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            jsonHelper.patch(original, patch, User.class);
+        });
+
+        assertEquals("List elements do not support Deep Merge", exception.getMessage());
+    }
 }
 
