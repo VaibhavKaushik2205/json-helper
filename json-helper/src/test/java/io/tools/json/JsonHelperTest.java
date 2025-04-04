@@ -15,7 +15,7 @@ class JsonHelperTest {
 
     static class User {
         public String name;
-        public int age;
+        public Integer age;
         public List<String> roles;
         public Map<String, String> metadata;
 
@@ -37,6 +37,17 @@ class JsonHelperTest {
     }
 
     @Test
+    void testMergeNullPatch() {
+        User original = new User("John", 25, Collections.emptyList(), new HashMap<>());
+        User patch = new User();
+
+        User mergedUser = jsonHelper.patch(original, patch, User.class);
+
+        assertEquals("John", mergedUser.name); // Should retain existing value
+        assertEquals(25, mergedUser.age); // Should retain existing value
+    }
+
+    @Test
     void testMergeSimpleFields() {
         User original = new User("John", 25, Collections.emptyList(), new HashMap<>());
         User patch = new User(null, 30, Collections.emptyList(), null);
@@ -48,9 +59,25 @@ class JsonHelperTest {
     }
 
     @Test
-    void testMergeNestedFields() {
+    void testMergeOverwriteObjects() {
+        Map<String, String> metadata = new HashMap<>();
+        metadata.put("role", "admin");
+
+        User original = new User("John", 25, Collections.emptyList(), metadata);
+        User patch = new User(null, 25, Collections.emptyList(), new HashMap<>());
+
+        User mergedUser = jsonHelper.patch(original, patch, User.class);
+
+        assertEquals("John", mergedUser.name); // Should retain existing value
+        assertEquals(25, mergedUser.age); // Should update
+        assertEquals(0, mergedUser.metadata.size()); // Map should be updated
+    }
+
+    @Test
+    void testDeepMergeNestedFields() {
         Map<String, String> originalMetadata = new HashMap<>();
         originalMetadata.put("role", "admin");
+        originalMetadata.put("department", "product");
 
         Map<String, String> patchMetadata = new HashMap<>();
         patchMetadata.put("department", "engineering");
@@ -64,6 +91,7 @@ class JsonHelperTest {
         assertEquals("Alice", mergedUser.name);
         assertEquals(39, mergedUser.age);
         assertEquals("admin", mergedUser.metadata.get("role"));
+        // Departed should be updated to engineering
         assertEquals("engineering", mergedUser.metadata.get("department"));
     }
 
@@ -74,6 +102,7 @@ class JsonHelperTest {
 
         User mergedUser = jsonHelper.patch(target, source, User.class);
 
+        // Default behaviour should be appended array
         System.out.println(mergedUser.roles);
         assertTrue(mergedUser.roles.contains("admin"));
         assertTrue(mergedUser.roles.contains("architect"));
@@ -89,6 +118,8 @@ class JsonHelperTest {
         jsonHelper = new JsonHelper().setArrayMergeStrategy(MergeStrategy.UNIQUE);
         User mergedUser = jsonHelper.patch(target, source, User.class);
 
+        long adminCount = mergedUser.roles.stream().filter(role -> role.equals("admin")).count();
+        assertEquals(1, adminCount);
         assertTrue(mergedUser.roles.contains("admin"));
         assertTrue(mergedUser.roles.contains("developer"));
         assertEquals(2, mergedUser.roles.size());
