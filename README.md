@@ -29,7 +29,7 @@ git clone https://github.com/VaibhavKaushik2205/json-helper.git
 You’ll find the output JAR inside `build/libs/`. You can then import it manually in your project.
 
 ### 3. Use as Source Code
-If you're not publishing it as a dependency yet (e.g., to Maven Central or a private repo), you can:
+If you're not using it as a jar dependency, you can:
 
 > 🛠️ Copy the `io.tools.json` package (from `src/main/java`) into your own project's source directory.
 
