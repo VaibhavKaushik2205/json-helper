@@ -8,10 +8,9 @@ JsonHelper is a lightweight Java utility that helps perform **deep merges** betw
 
 - Deep merge Java objects via JSON.
 - Supports custom merge strategies for:
-    - Arrays: `APPEND`, `UNIQUE`, `OVERWRITE`, `DEEP_MERGE`
+    - Arrays: `APPEND`, `UNIQUE`, `OVERWRITE`
     - Objects: `OVERWRITE`, `DEEP_MERGE`
 - Skip nulls or empty values.
-- Configure merging behavior with `MergeOptions`.
 - Works with nested structures, maps, lists, etc.
 
 ---
@@ -40,14 +39,21 @@ If you're not publishing it as a dependency yet (e.g., to Maven Central or a pri
 
 ```java
 User target = new User("Alice", 28, List.of("admin", "dev"), Map.of("team", "alpha"));
-User patch = new User(null, 30, List.of("admin"), Map.of("location", "NY"));
+User patch = new User(null, 30, List.of("admin", "security"), Map.of("location", "NY"));
 
-MergeOptions options = new MergeOptions()
-    .setArrayMergeStrategy(ArrayMergeStrategy.UNIQUE)
-    .setObjectMergeStrategy(ObjectMergeStrategy.DEEP_MERGE)
-    .setAllowEmptyStrings(false);
+JsonHelper jsonHelper = new JsonHelper().setArrayMergeStrategy(ArrayMergeStrategy.UNIQUE).setObjectMergeStrategy(ObjectMergeStrategy.DEEP_MERGE).setIgnoreEmptyStrings(false);
+User merged = jsonHelper.patch(target, patch, User.class);
 
-User merged = JsonHelper.patch(target, patch, User.class, options);
+output:
+{
+  "name": "Alice",
+  "age": 30,
+  "roles": ["admin", "dev", "security"],
+  "attributes": {
+    "team": "alpha",
+    "location": "NY"
+  }
+}
 ```
 
 ---
@@ -58,7 +64,7 @@ User merged = JsonHelper.patch(target, patch, User.class, options);
 |--------|-------------|
 | `arrayMergeStrategy` | Strategy for merging arrays: `APPEND`, `UNIQUE`, `OVERWRITE` |
 | `objectMergeStrategy` | Strategy for merging objects: `OVERWRITE`, `DEEP_MERGE` |
-| `allowEmptyStrings` | If false, ignores empty strings in the patch |
+| `ignoreEmptyStrings` | If true, ignores empty strings in the patch |
 
 ---
 
@@ -68,7 +74,6 @@ User merged = JsonHelper.patch(target, patch, User.class, options);
     - Simple merge
     - Nested object merging
     - Array merging strategies
-    - Error conditions (like unsupported deep merge on array elements)
 
 ---
 
@@ -81,7 +86,7 @@ User merged = JsonHelper.patch(target, patch, User.class, options);
 
 
 ## 🤝 Contributing
-Pull requests welcome! Feel free to open issues or suggest features.
+Pull requests are welcome! Feel free to open issues or suggest features.
 
 ---
 
