@@ -24,11 +24,6 @@ jobs:
           distribution: 'temurin'
           java-version: 17
 
-      # Step 3: Grant execute permissions to Gradle wrapper
-      - name: Make gradlew executable
-        run: chmod +x json-helper/gradlew
-
       # Step 4: Run build (clean, compile, test)
       - name: Run Gradle build
-        working-directory: json-helper
         run: ./gradlew clean build
