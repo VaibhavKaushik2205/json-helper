@@ -1,188 +1,195 @@
+/*
+ * Copyright (c) 2024 Vaibhav Kaushik
+ * All rights reserved.
+ *
+ */
 package io.tools.json;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 import io.tools.json.enums.MergeStrategy;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 class JsonHelperTest {
 
-    static class User {
-        public String name;
-        public Integer age;
-        public List<String> roles;
-        public Map<String, String> metadata;
+  static class User {
+    public String name;
+    public Integer age;
+    public List<String> roles;
+    public Map<String, String> metadata;
 
-        public User() {
-        }
+    public User() {}
 
-        public User(String name, int age, List<String> roles, Map<String, String> metadata) {
-            this.name = name;
-            this.age = age;
-            this.roles = roles;
-            this.metadata = metadata;
-        }
+    public User(String name, int age, List<String> roles, Map<String, String> metadata) {
+      this.name = name;
+      this.age = age;
+      this.roles = roles;
+      this.metadata = metadata;
     }
+  }
 
-    JsonHelper jsonHelper;
-    @BeforeEach
-    public void setup() {
-        jsonHelper = new JsonHelper();
-    }
+  JsonHelper jsonHelper;
 
-    @Test
-    void testMergeNullPatch() {
-        User original = new User("John", 25, Collections.emptyList(), new HashMap<>());
-        User patch = new User();
+  @BeforeEach
+  public void setup() {
+    jsonHelper = new JsonHelper();
+  }
 
-        User mergedUser = jsonHelper.patch(original, patch, User.class);
+  @Test
+  void testMergeNullPatch() {
+    User original = new User("John", 25, Collections.emptyList(), new HashMap<>());
+    User patch = new User();
 
-        assertEquals("John", mergedUser.name); // Should retain existing value
-        assertEquals(25, mergedUser.age); // Should retain existing value
-    }
+    User mergedUser = jsonHelper.patch(original, patch, User.class);
 
-    @Test
-    void testMergeSimpleFields() {
-        User original = new User("John", 25, Collections.emptyList(), new HashMap<>());
-        User patch = new User(null, 30, Collections.emptyList(), null);
+    assertEquals("John", mergedUser.name); // Should retain existing value
+    assertEquals(25, mergedUser.age); // Should retain existing value
+  }
 
-        User mergedUser = jsonHelper.patch(original, patch, User.class);
+  @Test
+  void testMergeSimpleFields() {
+    User original = new User("John", 25, Collections.emptyList(), new HashMap<>());
+    User patch = new User(null, 30, Collections.emptyList(), null);
 
-        assertEquals("John", mergedUser.name); // Should retain existing value
-        assertEquals(30, mergedUser.age); // Should update
-    }
+    User mergedUser = jsonHelper.patch(original, patch, User.class);
 
-    @Test
-    void testMergeOverwriteObjects() {
-        Map<String, String> metadata = new HashMap<>();
-        metadata.put("role", "admin");
+    assertEquals("John", mergedUser.name); // Should retain existing value
+    assertEquals(30, mergedUser.age); // Should update
+  }
 
-        User original = new User("John", 25, Collections.emptyList(), metadata);
-        User patch = new User(null, 25, Collections.emptyList(), new HashMap<>());
+  @Test
+  void testMergeOverwriteObjects() {
+    Map<String, String> metadata = new HashMap<>();
+    metadata.put("role", "admin");
 
-        User mergedUser = jsonHelper.patch(original, patch, User.class);
+    User original = new User("John", 25, Collections.emptyList(), metadata);
+    User patch = new User(null, 25, Collections.emptyList(), new HashMap<>());
 
-        assertEquals("John", mergedUser.name); // Should retain existing value
-        assertEquals(25, mergedUser.age); // Should update
-        assertEquals(0, mergedUser.metadata.size()); // Map should be updated
-    }
+    User mergedUser = jsonHelper.patch(original, patch, User.class);
 
-    @Test
-    void testDeepMergeNestedFields() {
-        Map<String, String> originalMetadata = new HashMap<>();
-        originalMetadata.put("role", "admin");
-        originalMetadata.put("department", "product");
+    assertEquals("John", mergedUser.name); // Should retain existing value
+    assertEquals(25, mergedUser.age); // Should update
+    assertEquals(0, mergedUser.metadata.size()); // Map should be updated
+  }
 
-        Map<String, String> patchMetadata = new HashMap<>();
-        patchMetadata.put("department", "engineering");
+  @Test
+  void testDeepMergeNestedFields() {
+    Map<String, String> originalMetadata = new HashMap<>();
+    originalMetadata.put("role", "admin");
+    originalMetadata.put("department", "product");
 
-        User original = new User("Alice", 28, Collections.emptyList(), originalMetadata);
-        User patch = new User(null, 39, Collections.emptyList(), patchMetadata);
+    Map<String, String> patchMetadata = new HashMap<>();
+    patchMetadata.put("department", "engineering");
 
-        jsonHelper = new JsonHelper().setObjectMergeStrategy(MergeStrategy.DEEP_MERGE);
-        User mergedUser = jsonHelper.patch(original, patch, User.class);
+    User original = new User("Alice", 28, Collections.emptyList(), originalMetadata);
+    User patch = new User(null, 39, Collections.emptyList(), patchMetadata);
 
-        assertEquals("Alice", mergedUser.name);
-        assertEquals(39, mergedUser.age);
-        assertEquals("admin", mergedUser.metadata.get("role"));
-        // Departed should be updated to engineering
-        assertEquals("engineering", mergedUser.metadata.get("department"));
-    }
+    jsonHelper = new JsonHelper().setObjectMergeStrategy(MergeStrategy.DEEP_MERGE);
+    User mergedUser = jsonHelper.patch(original, patch, User.class);
 
-    @Test
-    void testMergeArrayFields() {
-        User target = new User("Alice", 28, List.of("admin", "architect"), Map.of());
-        User source = new User(null, 0, List.of("developer"), Map.of());
+    assertEquals("Alice", mergedUser.name);
+    assertEquals(39, mergedUser.age);
+    assertEquals("admin", mergedUser.metadata.get("role"));
+    // Departed should be updated to engineering
+    assertEquals("engineering", mergedUser.metadata.get("department"));
+  }
 
-        User mergedUser = jsonHelper.patch(target, source, User.class);
+  @Test
+  void testMergeArrayFields() {
+    User target = new User("Alice", 28, List.of("admin", "architect"), Map.of());
+    User source = new User(null, 0, List.of("developer"), Map.of());
 
-        // Default behaviour should be appended array
-        System.out.println(mergedUser.roles);
-        assertTrue(mergedUser.roles.contains("admin"));
-        assertTrue(mergedUser.roles.contains("architect"));
-        assertTrue(mergedUser.roles.contains("developer"));
-        assertEquals(3, mergedUser.roles.size());
-    }
+    User mergedUser = jsonHelper.patch(target, source, User.class);
 
-    @Test
-    void testMergeUniqueArrayFields() {
-        User target = new User("Alice", 28, List.of("admin", "developer"), Map.of());
-        User source = new User(null, 0, List.of("admin"), Map.of());
+    // Default behaviour should be appended array
+    System.out.println(mergedUser.roles);
+    assertTrue(mergedUser.roles.contains("admin"));
+    assertTrue(mergedUser.roles.contains("architect"));
+    assertTrue(mergedUser.roles.contains("developer"));
+    assertEquals(3, mergedUser.roles.size());
+  }
 
-        jsonHelper = new JsonHelper().setArrayMergeStrategy(MergeStrategy.UNIQUE);
-        User mergedUser = jsonHelper.patch(target, source, User.class);
+  @Test
+  void testMergeUniqueArrayFields() {
+    User target = new User("Alice", 28, List.of("admin", "developer"), Map.of());
+    User source = new User(null, 0, List.of("admin"), Map.of());
 
-        long adminCount = mergedUser.roles.stream().filter(role -> role.equals("admin")).count();
-        assertEquals(1, adminCount);
-        assertTrue(mergedUser.roles.contains("admin"));
-        assertTrue(mergedUser.roles.contains("developer"));
-        assertEquals(2, mergedUser.roles.size());
-    }
+    jsonHelper = new JsonHelper().setArrayMergeStrategy(MergeStrategy.UNIQUE);
+    User mergedUser = jsonHelper.patch(target, source, User.class);
 
-    @Test
-    void testMergeAppendArrayFields() {
-        User target = new User("Alice", 28, List.of("admin", "developer"), Map.of());
-        User source = new User(null, 0, List.of("admin"), Map.of());
+    long adminCount = mergedUser.roles.stream().filter(role -> role.equals("admin")).count();
+    assertEquals(1, adminCount);
+    assertTrue(mergedUser.roles.contains("admin"));
+    assertTrue(mergedUser.roles.contains("developer"));
+    assertEquals(2, mergedUser.roles.size());
+  }
 
-        User mergedUser = jsonHelper.patch(target, source, User.class);
+  @Test
+  void testMergeAppendArrayFields() {
+    User target = new User("Alice", 28, List.of("admin", "developer"), Map.of());
+    User source = new User(null, 0, List.of("admin"), Map.of());
 
-        long adminCount = mergedUser.roles.stream().filter(role -> role.equals("admin")).count();
-        assertEquals(2, adminCount);
-        assertTrue(mergedUser.roles.contains("developer"));
-        assertEquals(3, mergedUser.roles.size());
-    }
+    User mergedUser = jsonHelper.patch(target, source, User.class);
 
-    @Test
-    void testMergeOverwriteArrayFields() {
-        User target = new User("Alice", 28, List.of("admin", "developer"), Map.of());
-        User source = new User(null, 0, List.of("architect"), Map.of());
+    long adminCount = mergedUser.roles.stream().filter(role -> role.equals("admin")).count();
+    assertEquals(2, adminCount);
+    assertTrue(mergedUser.roles.contains("developer"));
+    assertEquals(3, mergedUser.roles.size());
+  }
 
-        jsonHelper = new JsonHelper().setArrayMergeStrategy(MergeStrategy.OVERWRITE);
-        User mergedUser = jsonHelper.patch(target, source, User.class);
+  @Test
+  void testMergeOverwriteArrayFields() {
+    User target = new User("Alice", 28, List.of("admin", "developer"), Map.of());
+    User source = new User(null, 0, List.of("architect"), Map.of());
 
-        assertTrue(mergedUser.roles.contains("architect"));
-        assertFalse(mergedUser.roles.contains("admin"));
-        assertFalse(mergedUser.roles.contains("developer"));
-        assertEquals(1, mergedUser.roles.size());
-    }
+    jsonHelper = new JsonHelper().setArrayMergeStrategy(MergeStrategy.OVERWRITE);
+    User mergedUser = jsonHelper.patch(target, source, User.class);
 
-    @Test
-    void testAllowEmptyString() {
-        User original = new User("Alice", 28, List.of("admin", "developer"), Map.of("role", "admin"));
-        User patch = new User("", 30, List.of("developer"), Map.of("role", ""));
+    assertTrue(mergedUser.roles.contains("architect"));
+    assertFalse(mergedUser.roles.contains("admin"));
+    assertFalse(mergedUser.roles.contains("developer"));
+    assertEquals(1, mergedUser.roles.size());
+  }
 
-        jsonHelper = new JsonHelper()
+  @Test
+  void testAllowEmptyString() {
+    User original = new User("Alice", 28, List.of("admin", "developer"), Map.of("role", "admin"));
+    User patch = new User("", 30, List.of("developer"), Map.of("role", ""));
+
+    jsonHelper =
+        new JsonHelper()
             .setArrayMergeStrategy(MergeStrategy.OVERWRITE)
             .setObjectMergeStrategy(MergeStrategy.DEEP_MERGE)
             .setIgnoreEmptyStrings(false);
-        User mergedUser = jsonHelper.patch(original, patch, User.class);
+    User mergedUser = jsonHelper.patch(original, patch, User.class);
 
-        assertEquals("", mergedUser.name);
-        assertEquals(30, mergedUser.age);
-        assertTrue(mergedUser.roles.contains("developer"));
-        assertEquals(1, mergedUser.roles.size());
+    assertEquals("", mergedUser.name);
+    assertEquals(30, mergedUser.age);
+    assertTrue(mergedUser.roles.contains("developer"));
+    assertEquals(1, mergedUser.roles.size());
 
-        // For the metadata, the empty string should overwrite the original value
-        assertEquals("", mergedUser.metadata.get("role"));
-    }
+    // For the metadata, the empty string should overwrite the original value
+    assertEquals("", mergedUser.metadata.get("role"));
+  }
 
-    @Test
-    void testDeepMergeArrayStrategyThrowsException() {
-        User original = new User("Alice", 28, List.of("admin", "developer"), Map.of("role", "admin"));
-        User patch = new User(null, 30, List.of("manager", "developer"), Map.of("role", "admin"));
+  @Test
+  void testDeepMergeArrayStrategyThrowsException() {
+    User original = new User("Alice", 28, List.of("admin", "developer"), Map.of("role", "admin"));
+    User patch = new User(null, 30, List.of("manager", "developer"), Map.of("role", "admin"));
 
-        jsonHelper = new JsonHelper().setArrayMergeStrategy(MergeStrategy.DEEP_MERGE);
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            jsonHelper.patch(original, patch, User.class);
-        });
+    jsonHelper = new JsonHelper().setArrayMergeStrategy(MergeStrategy.DEEP_MERGE);
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> {
+              jsonHelper.patch(original, patch, User.class);
+            });
 
-        assertEquals("List elements do not support Deep Merge", exception.getMessage());
-    }
+    assertEquals("List elements do not support Deep Merge", exception.getMessage());
+  }
 }
-
