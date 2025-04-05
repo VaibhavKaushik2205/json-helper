@@ -1,5 +1,6 @@
 plugins {
     id 'java'
+    id 'com.diffplug.spotless' version '6.25.0'
 }
 
 group = 'io.tools.json'
@@ -21,6 +22,19 @@ dependencies {
 
     testImplementation platform('org.junit:junit-bom:5.9.1')
     testImplementation 'org.junit.jupiter:junit-jupiter'
+}
+
+spotless {
+    java {
+        target 'src/**/*.java'
+        targetExclude 'build/**' // 👈 excludes all files under build/
+        googleJavaFormat('1.15.0')
+        licenseHeaderFile rootProject.file('spotless.license.java')
+    }
+    // Format build.gradle
+    groovyGradle {
+        target '*.gradle'
+    }
 }
 
 test {
