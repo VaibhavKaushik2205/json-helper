@@ -86,7 +86,7 @@ output:
 
 
 ## 🤝 Contributing
-Pull requests are welcome! Feel free to open issues or suggest features.
+Pull requests are welcome! Feel free to open issues or suggest features. Check out our CONTRIBUTING.md for guidelines on how to get started.
 
 ---
 
