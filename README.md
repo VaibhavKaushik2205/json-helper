@@ -78,7 +78,6 @@ output:
 ---
 
 ## ✨ Future Ideas
-- Publish to Maven Central
 - Add annotations to configure merge behavior per-field
 - Add support for merging POJO collections by ID
 
